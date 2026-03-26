@@ -9,5 +9,6 @@ user/*
 # 除外からの除外
 !generated/.gitkeep
 !generated/src/.gitkeep
-generated/configs/.gitkeep
+!generated/configs/.gitkeep
+!user/run.bat
 !user/README.md
