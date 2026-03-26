@@ -1,8 +1,13 @@
 # 除外ディレクトリ
 # コンパイル後のバイナリ
-compiled/*
-compiled/src/*
+generated/*
+generated/src/*
+generated/configs/*
+# ユーザー設定
+user/*
 
 # 除外からの除外
-!compiled/.gitkeep
-!compiled/src/.gitkeep
+!generated/.gitkeep
+!generated/src/.gitkeep
+generated/configs/.gitkeep
+!user/README.md

@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "project name": {
+      "root": "root/to/your/project/dir",
+      "exclusions": [".git", "assets"]
+    },
+    "project2 name": {
+      "root": "root/to/your/project2/dir",
+      "exclusions": [".git", "assets", "build"]
+    }
+  }
+}

@@ -4,120 +4,205 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.regex.*;
 
-/**
- * ソースコード解析・ディレクトリ構造可視化ツールのメインエントリポイント。
- * 設定ファイルからパス情報を読み込み、ユーザー対話形式で解析を実行します。
- */
 public class Main {
+    // プロジェクトのルートディレクトリ
+    private static final String PROJECT_ROOT;
 
-    // プロジェクトの設定フォルダのパス。
-    private static final String CONFIG_DIR = "C:/Users/admin/dev/projects/ProjectAnalyzer/configs";
+    // ルートからの相対パスで設定ファイルを指定
+    private static final String CONFIG_FILE;
 
-    // 設定ファイルの配置パスこちらはプロジェクトルートのconfigフォルダ内にtargets.txtとexclusions.txtを配置する想定。
-    private static final String TARGETS_FILE = CONFIG_DIR+"/targets.txt";
-    private static final String EXCLUSIONS_FILE = CONFIG_DIR+"/exclusions.txt";
+    static {
+        String root;
+        try {
+            // 1. Main.class が置かれている場所（URL）を取得
+            // 2. それを URI に変換し、Path オブジェクトにする
+            // 3. .class は generated/src/Main.class にある想定なので、3つ上がルート
+            Path classPath = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+
+            // generated/ フォルダにいるなら、その親がプロジェクトルート
+            // (バッチの javac -d "generated" の設定に合わせる)
+            Path projectRootPath = classPath.getParent();
+
+            // もし classPath が "generated/" 自体を指しているなら、その親がルート
+            root = projectRootPath.toAbsolutePath().toString().replace("\\", "/");
+
+        } catch (Exception e) {
+            // 万が一失敗した時の保険
+            root = System.getProperty("user.dir").replace("\\", "/");
+        }
+        PROJECT_ROOT = root;
+        CONFIG_FILE = PROJECT_ROOT + "/user/configs.json";
+    }
+
+    // プロジェクト情報を保持するインナークラス
+    static class ProjectInfo {
+        String name;
+        String root;
+        List<String> exclusions;
+
+        ProjectInfo(String name, String root, List<String> exclusions) {
+            this.name = name;
+            this.root = root;
+            this.exclusions = exclusions;
+        }
+    }
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
         try {
-            // 1. 設定の読み込み
-            List<String> targetPaths = loadFileLines(TARGETS_FILE);
-            List<String> exclusions = loadFileLines(EXCLUSIONS_FILE);
+            // 1. JSON設定の読み込み
+            List<ProjectInfo> projects = loadProjectsFromJson(CONFIG_FILE);
 
-            if (targetPaths.isEmpty()) {
-                System.err.println("エラー: " + TARGETS_FILE + " に解析対象のパスが記述されていません。");
+            if (projects.isEmpty()) {
+                System.err.println("Error: No project is defined.");
                 return;
             }
 
-            // 2. 除外リストの明示（自白）
-            System.out.println("========================================");
-            System.out.println("[INFO] 以下の要素を全操作で強制除外します:");
-            if (exclusions.isEmpty()) {
-                System.out.println(" - (なし)");
-            } else {
-                exclusions.forEach(e -> System.out.println(" - " + e));
-            }
-            System.out.println("========================================\n");
-
-            // 3. 対象パスの選択ループ
-            String selectedPath = null;
-            while (selectedPath == null) {
-                System.out.println("解析対象のディレクトリを選択してください:");
-                for (int i = 0; i < targetPaths.size(); i++) {
-                    System.out.printf("[%d] %s%n", i, targetPaths.get(i));
+            // 2. 対象プロジェクトの選択
+            ProjectInfo selectedProject = null;
+            while (selectedProject == null) {
+                System.out.println("========================================");
+                System.out.println("Choose Project to analyze:");
+                for (int i = 0; i < projects.size(); i++) {
+                    System.out.printf("[%d] %s (%s)%n", i, projects.get(i).name, projects.get(i).root);
                 }
-                System.out.print("\n選択 (IDを入力) > ");
+                System.out.print("\nChoose (Enter ID) > ");
 
                 String input = scanner.nextLine();
                 try {
                     int index = Integer.parseInt(input);
-                    if (index >= 0 && index < targetPaths.size()) {
-                        selectedPath = targetPaths.get(index);
+                    if (index >= 0 && index < projects.size()) {
+                        selectedProject = projects.get(index);
                     } else {
-                        System.out.println("\n[!] エラー: 範囲外のIDです。もう一度入力してください。\n");
+                        System.out.println("\n[!] Error: Out of range.\n");
                     }
                 } catch (NumberFormatException e) {
-                    System.out.println("\n[!] エラー: 数値を入力してください。\n");
+                    System.out.println("\n[!] Error: Enter number.\n");
                 }
             }
 
-            // 4. 解析の実行
-            executeAnalysis(selectedPath, exclusions);
+            // 3. 解析の実行（そのプロジェクト専用の除外リストを渡す）
+            executeAnalysis(selectedProject);
 
-        } catch (IOException e) {
-            System.err.println("致命的なI/Oエラーが発生しました: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Fatal Error: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             scanner.close();
         }
     }
 
     /**
-     * 指定されたパスに対して、ツリー構造の出力と行数集計を実行します。
+     * 言語の拡張子設定を管理する
      */
-    private static void executeAnalysis(String rootPath, List<String> exclusions) {
-        System.out.println("\n--- 解析を開始します: " + rootPath + " ---\n");
+    public static enum LanguageGroup {
+        JAVA("Java/Kotlin", ".java", ".kt"),
+        NATIVE("C-Family Native", ".c", ".h", ".cpp", ".hpp"),
+        WEB("Web Technologies", ".ts", ".js"),
+        CONFIG("Config/Layouts", ".xml", ".json", ".yaml");
+
+        public final String label;
+        public final String[] extensions;
+
+        LanguageGroup(String label, String... extensions) {
+            this.label = label;
+            this.extensions = extensions;
+        }
+    }
+
+    private static String[] getAllExtensions(boolean excludeConfig) {
+        return Arrays.stream(LanguageGroup.values())
+                .filter(g -> !excludeConfig || g != LanguageGroup.CONFIG)
+                .flatMap(g -> Arrays.stream(g.extensions))
+                .toArray(String[]::new);
+    }
+
+    /**
+     * プロジェクト個別の設定に基づいて解析を実行します。
+     */
+    private static void executeAnalysis(ProjectInfo project) {
+        System.out.println("\n--- Analytics of : " + project.name + " ---");
+        System.out.println("Root: " + project.root);
+        System.out.println("Exclusions: " + String.join(", ", project.exclusions) + "\n");
 
         // A. ディレクトリツリーの構築
-        DirectoryTreeConstructor.TreeRequest treeReq = 
-            new DirectoryTreeConstructor.TreeRequest(rootPath, exclusions);
+        DirectoryTreeConstructor.TreeRequest treeReq = new DirectoryTreeConstructor.TreeRequest(project.root,
+                project.exclusions);
         String treeReport = DirectoryTreeConstructor.construct(treeReq);
-        
-        System.out.println("===== ディレクトリ構造 =====");
+
+        System.out.println("===== Directory Tree =====");
         System.out.println(treeReport);
 
         // B. ソースコード行数集計
-        // 集計グループの定義（bœmさんの開発スタイルに合わせたプリセット）
-        List<SourceCodeAnalyzer.SumGroupConfig> sumConfigs = Arrays.asList(
-            new SourceCodeAnalyzer.SumGroupConfig("All Src Codes", ".java", ".kt", ".h", ".hpp", ".c", ".cpp", ".ts", ".xml"),
-            new SourceCodeAnalyzer.SumGroupConfig("Logic Only (No XML)", ".java", ".kt", ".h", ".hpp", ".c", ".cpp", ".ts"),
-            new SourceCodeAnalyzer.SumGroupConfig("C-Family Native", ".c", ".h", ".cpp", ".hpp")
-        );
+        List<SourceCodeAnalyzer.SumGroupConfig> sumConfigs = new ArrayList<>();
 
-        SourceCodeAnalyzer.AnalysisRequest analysisReq = 
-            new SourceCodeAnalyzer.AnalysisRequest(rootPath, exclusions, sumConfigs);
+        // 1. 全体統計 (Total)
+        sumConfigs.add(new SourceCodeAnalyzer.SumGroupConfig("TOTAL (All Src)",
+                getAllExtensions(false)));
+
+        // 2. ロジック統計 (Logic Only - Config以外)
+        sumConfigs.add(new SourceCodeAnalyzer.SumGroupConfig("LOGIC ONLY (No Config)",
+                getAllExtensions(true)));
+
+        // 3. 各グループごとの統計 (自動生成)
+        for (LanguageGroup group : LanguageGroup.values()) {
+            sumConfigs.add(new SourceCodeAnalyzer.SumGroupConfig("-> " + group.label,
+                    group.extensions));
+        }
+
+        SourceCodeAnalyzer.AnalysisRequest analysisReq = new SourceCodeAnalyzer.AnalysisRequest(project.root,
+                project.exclusions, sumConfigs);
         String analysisReport = SourceCodeAnalyzer.generateReport(analysisReq);
 
         System.out.println(analysisReport);
         System.out.println("========================================");
-        System.out.println("解析が完了しました。");
+        System.out.println("End of analytics");
     }
 
     /**
-     * ファイルから全行を読み込み、空行を除去してリストで返します。
+     * JSONファイルを簡易解析してProjectInfoのリストを生成します。
+     * ライブラリを使わないため、正規表現で「projects」オブジェクトの中身を抽出します。
      */
-    private static List<String> loadFileLines(String filePath) throws IOException {
-        Path path = Paths.get(filePath);
-        if (!Files.exists(path)) {
-            // ファイルが存在しない場合は空リストを返し、警告を表示
-            System.out.println("[WARN] 設定ファイルが見つかりません: " + filePath);
-            return Collections.emptyList();
+    private static List<ProjectInfo> loadProjectsFromJson(String filePath) throws IOException {
+        String content = new String(Files.readAllBytes(Paths.get(filePath)), StandardCharsets.UTF_8);
+        List<ProjectInfo> projectList = new ArrayList<>();
+
+        // "projects": { ... } の中身を抽出
+        Pattern projectsPattern = Pattern.compile("\"projects\"\\s*:\\s*\\{(.+)\\}", Pattern.DOTALL);
+        Matcher matcher = projectsPattern.matcher(content);
+
+        if (matcher.find()) {
+            String projectsBody = matcher.group(1);
+
+            // 各プロジェクトのブロックを分割（簡易的に "name": { ... } を探す）
+            Pattern projectBlockPattern = Pattern.compile("\"([^\"]+)\"\\s*:\\s*\\{([^}]+)\\}", Pattern.DOTALL);
+            Matcher blockMatcher = projectBlockPattern.matcher(projectsBody);
+
+            while (blockMatcher.find()) {
+                String projectName = blockMatcher.group(1);
+                String details = blockMatcher.group(2);
+
+                // root 抽出
+                String root = "";
+                Matcher rootMatcher = Pattern.compile("\"root\"\\s*:\\s*\"([^\"]+)\"").matcher(details);
+                if (rootMatcher.find())
+                    root = rootMatcher.group(1).replace("\\\\", "/");
+
+                // exclusions 抽出
+                List<String> exclusions = new ArrayList<>();
+                Matcher exclMatcher = Pattern.compile("\"exclusions\"\\s*:\\s*\\[([^\\]]+)\\]").matcher(details);
+                if (exclMatcher.find()) {
+                    String[] items = exclMatcher.group(1).split(",");
+                    for (String item : items) {
+                        exclusions.add(item.replace("\"", "").trim());
+                    }
+                }
+                projectList.add(new ProjectInfo(projectName, root, exclusions));
+            }
         }
-        return Files.readAllLines(path, StandardCharsets.UTF_8).stream()
-                .map(String::trim)
-                .filter(line -> !line.isEmpty())
-                .collect(Collectors.toList());
+        return projectList;
     }
 }

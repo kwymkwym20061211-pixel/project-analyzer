@@ -2,33 +2,34 @@
 setlocal
 chcp 65001 > nul
 
-rem プロジェクトのルートディレクトリに移動
-cd /d "C:\Users\admin\dev\projects\ProjectAnalyzer"
+set "PROJECT_ROOT=%~dp0.."
+cd /d "%PROJECT_ROOT%"
 
 echo ========================================
+echo Project Root: %CD%
+echo ========================================
+
 echo [1/2] ビルド環境をクリーンアップ中...
-rem 古いクラスファイルを一度削除して、ディレクトリを再作成します
-if exist "compiled" rd /s /q "compiled"
-mkdir "compiled"
+if exist "generated" rd /s /q "generated"
+mkdir "generated"
 
 echo [2/2] 全サブディレクトリを含めて一括コンパイル中...
-rem src 以下のすべての .java ファイルを再帰的にリストアップ
 dir /s /b src\*.java > sources.txt
-
-rem リストを元に一括コンパイル（出力先は compiled フォルダ）
-javac -d "compiled" -encoding UTF-8 @sources.txt
+javac -d "generated" -encoding UTF-8 @sources.txt
 
 if %errorlevel% equ 0 (
     echo.
-    echo [SUCCESS] 全てのソースコードのコンパイルが成功しました。
-) else (
-    echo.
-    echo [ERROR] コンパイル中にエラーが発生しました。
+    echo [SUCCESS] コンパイル成功。
+    
+    if not exist "generated\configs" mkdir "generated\configs"
+    
+    rem 改行や余計な空白を入れずに、現在のディレクトリ(%CD%)を直接書き込む
+    <nul set /p="%CD%" > "generated\configs\root_path.txt"
+    
+    echo [INFO] Path saved: %CD%
 )
 
-rem 一時ファイルを削除して終了
 if exist "sources.txt" del sources.txt
-
 echo ========================================
 echo Enterキーを押すと終了します。
 pause > nul
