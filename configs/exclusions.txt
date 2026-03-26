@@ -1,0 +1,9 @@
+cxx
+build
+generated
+test
+vendor
+node_modules
+.bin
+package-lock.json
+.git

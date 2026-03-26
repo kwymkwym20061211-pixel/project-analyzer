@@ -1,0 +1,8 @@
+# 除外ディレクトリ
+# コンパイル後のバイナリ
+compiled/*
+compiled/src/*
+
+# 除外からの除外
+!compiled/.gitkeep
+!compiled/src/.gitkeep
