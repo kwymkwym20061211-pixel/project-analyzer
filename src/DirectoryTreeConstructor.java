@@ -26,6 +26,7 @@ public class DirectoryTreeConstructor {
 
     /**
      * 【純関数】指定されたパスからディレクトリツリーを生成します。
+     * 
      * @param request ルートパスと除外リスト
      * @return ツリー形式の文字列
      */
@@ -37,23 +38,25 @@ public class DirectoryTreeConstructor {
 
         StringBuilder sb = new StringBuilder();
         sb.append(root.getName()).append(" (").append(root.getAbsolutePath()).append(")\n");
-        
+
         // 再帰的にツリーを構築
         buildTree(root, "", request.excludeDirs, sb);
-        
+
         return sb.toString();
     }
 
     /**
      * 再帰的にディレクトリを走査し、StringBuilderにツリー図を蓄積します。
      * * @param dir 現在のディレクトリ
-     * @param indent 現在の階層のインデント文字列
+     * 
+     * @param indent   現在の階層のインデント文字列
      * @param excludes 除外ディレクトリ名のリスト
-     * @param sb 結果を格納するStringBuilder
+     * @param sb       結果を格納するStringBuilder
      */
     private static void buildTree(File dir, String indent, List<String> excludes, StringBuilder sb) {
         File[] children = dir.listFiles();
-        if (children == null) return;
+        if (children == null)
+            return;
 
         // 除外対象をフィルタリングし、名前順にソート
         List<File> filteredList = new ArrayList<>();
@@ -68,12 +71,18 @@ public class DirectoryTreeConstructor {
             File file = filteredList.get(i);
             boolean isLast = (i == filteredList.size() - 1);
 
+            final boolean isDirectory = file.isDirectory();
+
             // 枝の記号を決定
             String branch = isLast ? "└── " : "├── ";
-            sb.append(indent).append(branch).append(file.getName()).append("\n");
+            sb.append(indent).append(branch).append(file.getName());
+            if (isDirectory) {
+                sb.append("/");
+            }
+            sb.append("\n");
 
             // ディレクトリの場合はさらに深く潜る
-            if (file.isDirectory()) {
+            if (isDirectory) {
                 // 次の階層のインデントを決定
                 String nextIndent = indent + (isLast ? "    " : "│   ");
                 buildTree(file, nextIndent, excludes, sb);

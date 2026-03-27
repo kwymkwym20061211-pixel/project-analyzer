@@ -2,7 +2,7 @@
 setlocal
 chcp 65001 > nul
 
-set "PROJECT_ROOT=%~dp0.."
+set "PROJECT_ROOT=%~dp0"
 cd /d "%PROJECT_ROOT%"
 
 echo ========================================
