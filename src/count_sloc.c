@@ -155,7 +155,7 @@ int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
     if (!result_buf || !project_path) return -1;
 
     // 1. handlers から拡張子の数を取得
-    size_t num_exts = sizeof(handlers) / sizeof(handlers_t);// 実際には sizeof(handlers)/sizeof(handlers[0])
+    size_t num_exts = sizeof(handlers) / sizeof(sloc_handler_t);
 
     // 2. 結果用のメモリを確保
     ext_sloc_count_t *slocs = calloc(num_exts, sizeof(ext_sloc_count_t));
