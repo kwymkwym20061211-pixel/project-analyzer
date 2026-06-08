@@ -137,13 +137,10 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
     // ファイルを読み込んで行数をカウント
     if (read(fd, g_ctx.text_buf, len) == (ssize_t) len) {
         int lines = reader(g_ctx.text_buf, len);
-        printf("DEBUG: File %s has %d lines (ext: %s)\n", fpath, lines, ext);
 
         // 3. 同じ ext を使って加算先を特定
         for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
-            printf("  DEBUG: Comparing '%s' vs '%s'\n", ext, g_ctx.result->slocs[i].extension);
             if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
-                printf("  DEBUG: Matched ext '%s', adding %d lines\n", ext, lines);
                 g_ctx.result->slocs[i].count += lines;
                 break;
             }
@@ -157,17 +154,34 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
 int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
     if (!result_buf || !project_path) return -1;
 
-    // コンテキストの初期化
+    // 1. handlers から拡張子の数を取得
+    size_t num_exts = sizeof(handlers) / sizeof(handlers_t);// 実際には sizeof(handlers)/sizeof(handlers[0])
+
+    // 2. 結果用のメモリを確保
+    ext_sloc_count_t *slocs = calloc(num_exts, sizeof(ext_sloc_count_t));
+    if (!slocs) return -1;
+
+    // 3. handlers の定義を元に初期化
+    for (size_t i = 0; i < num_exts; i++) {
+        slocs[i].extension = handlers[i].ext;
+        slocs[i].count = 0;
+    }
+
+    result_buf->slocs = slocs;
+    result_buf->sloc_count = num_exts;
+
     g_ctx.result = result_buf;
 
-    // nftw で走査開始
+    // nftw で走査
     if (nftw(project_path, process_file, 64, FTW_PHYS) == -1) {
-        perror("nftw");
+        free(slocs);
         return -1;
     }
 
-    // バッファ開放
+    // 終了処理
     free(g_ctx.text_buf);
+    g_ctx.text_buf = NULL;
+    g_ctx.text_buf_size = 0;
 
     return 0;
 }
