@@ -62,8 +62,13 @@ int main(int argc, char *argv[]) {
     // 3. プロジェクトパスを表示
     printf("Project Path: %s\n", args.project_path);
     // 4. 設定に従って処理を実行
-    if (args.build_tree) {
-        printf("Building tree structure...\n");
+    if (args.count_sloc) {
+        printf("Counting SLOC...\n");
+        int sloc_rc = count_sloc((const char *) args.project_path);
+        if (sloc_rc < 0) {
+            printf("Failed to count SLOC.\n");
+            return -1;
+        }
     }
 
     return 0;
