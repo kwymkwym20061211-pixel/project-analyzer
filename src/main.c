@@ -17,6 +17,7 @@ static inline void reg_arg(main_args_t *args, const char *arg) {
     } else if (strcmp(arg, "--help") == 0) {
         printf("Usage: program [OPTIONS] [PROJECT_PATH]\n");
         printf("Options:\n");
+        printf("  --all, -a    Build a tree structure and count lines in the project\n");
         printf("  --help       Show this help message and exit\n");
         printf("  --tree       Build a tree structure of the project\n");
         printf("  --count      Count the number of lines in the project\n");
