@@ -101,7 +101,9 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
     if (typeflag != FTW_F) return 0;
 
     int (*reader)(const unsigned char *, size_t) = get_handler(fpath);
-    if (!reader) return 0;
+    if (!reader) {
+        return 0;
+    }
 
     // ファイル読み込みと解析
     int fd = open(fpath, O_RDONLY);
