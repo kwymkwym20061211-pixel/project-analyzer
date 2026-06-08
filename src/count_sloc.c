@@ -61,7 +61,11 @@ int count_c_like_file(const unsigned char *text, size_t text_len) {
 static const sloc_handler_t handlers[] = {
     {".c", count_c_like_file},
     {".h", count_c_like_file},
-    // { ".java", count_java_file }, など後で追加可能
+    {".cpp", count_c_like_file},
+    {".hpp", count_c_like_file},
+    {".java", count_c_like_file},
+    {".js", count_c_like_file},
+    {".ts", count_c_like_file},
 };
 
 // ---------------------------------------------------------------------------------
