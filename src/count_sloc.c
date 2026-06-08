@@ -82,6 +82,8 @@ static const sloc_handler_t handlers[] = {
 // nftwのコールバックで使うための内部コンテキスト
 typedef struct {
     sloc_count_result_t *result;
+    unsigned char *text_buf;
+    size_t text_buf_size;
 } walk_context_t;
 
 // グローバル（または静的）にコンテキストを保持してコールバックに渡す
@@ -109,22 +111,35 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
     int fd = open(fpath, O_RDONLY);
     if (fd < 0) return 0;
 
+    // テキスト走査用バッファの確保
     size_t len = sb->st_size;
-    unsigned char *buf = malloc(len);
-    if (buf) {
-        if (read(fd, buf, len) == (ssize_t) len) {
-            int lines = reader(buf, len);
+    if (len > g_ctx.text_buf_size) {
+        unsigned char *new_buf = realloc(g_ctx.text_buf, len);
+        if (!new_buf) {
+            close(fd);
+            return 0;
+        }
+        g_ctx.text_buf = new_buf;
+        g_ctx.text_buf_size = len;
+    }
+    if (!g_ctx.text_buf) {
+        close(fd);
+        return 0;
+    }
 
-            // 3. 同じ ext を使って加算先を特定
-            for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
-                if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
-                    g_ctx.result->slocs[i].count += lines;
-                    break;
-                }
+    // ファイルを読み込んで行数をカウント
+    if (read(fd, g_ctx.text_buf, len) == (ssize_t) len) {
+        int lines = reader(g_ctx.text_buf, len);
+
+        // 3. 同じ ext を使って加算先を特定
+        for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
+            if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
+                g_ctx.result->slocs[i].count += lines;
+                break;
             }
         }
-        free(buf);
     }
+
     close(fd);
     return 0;
 }
@@ -140,5 +155,9 @@ int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
         perror("nftw");
         return -1;
     }
+
+    // バッファ開放
+    free(g_ctx.text_buf);
+
     return 0;
 }
