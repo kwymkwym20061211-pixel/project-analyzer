@@ -52,10 +52,14 @@ int count_c_like_file(const unsigned char *text, size_t text_len) {
             }
         }
         // コメント行やブロックコメント内の行は空行とみなす。
-        if (c == '\n' && !is_empty_line && (!has_comment_begun || !is_in_block_comment)) {
+        if (c == '\n') {
+            // 条件を満たした場合のみ行数カウント
+            if (!is_empty_line) {
+                line_count++;
+            }
+            // 無差別に状態更新はする
             has_comment_begun = false;
             is_empty_line = true;
-            line_count++;
             continue;
         }
         // コメント内にいない時で、空白系以外を発見したら空行でないとみなす。
