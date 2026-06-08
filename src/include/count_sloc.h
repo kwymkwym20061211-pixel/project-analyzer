@@ -1,7 +1,7 @@
 
 typedef struct {
     /** ファイルを読んで行数をカウントする関数。エラーなら-1を返す */
-    int (*file_reader)(const unsigned char *text);
+    int (*file_reader)(const unsigned char *text, size_t text_len);
 } sloc_counter_t;
 
 /**
