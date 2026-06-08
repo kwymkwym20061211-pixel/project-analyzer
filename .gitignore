@@ -4,6 +4,8 @@ generated/*
 generated/src/*
 generated/configs/*
 compiled/*
+app/*
+bin/*
 # ユーザー設定
 user/*
 
