@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <ftw.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -75,14 +76,189 @@ int count_c_like_file(const unsigned char *text, size_t text_len) {
     return line_count;
 }
 
+// -------------------------------- XML/HTML風 -----------------------------------------
+/**
+ * XML, HTMLファイルの行数をカウントする関数
+ * ブロックコメント（）を考慮。行コメントは無し。
+ */
+int count_xml_like_file(const unsigned char *text, size_t text_len) {
+    int line_count = 0;
+    bool is_empty_line = true;
+    bool is_in_block_comment = false;
+
+    for (size_t i = 0; i < text_len; i++) {
+        unsigned char c = text[i];
+
+        // 1. ブロックコメントの終了判定
+        if (is_in_block_comment) {
+            if (i + 2 < text_len && c == '-' && text[i + 1] == '-' && text[i + 2] == '>') {
+                is_in_block_comment = false;
+                i += 2;// 残りの2文字をスキップ
+                continue;
+            }
+        }
+        // 2. ブロックコメントの開始判定
+        else {
+            if (i + 3 < text_len && c == '<' && text[i + 1] == '!' && text[i + 2] == '-' && text[i + 3] == '-') {
+                is_in_block_comment = true;
+                i += 3;// 残りの3文字をスキップ
+                continue;
+            }
+        }
+
+        // 3. 改行の処理
+        if (c == '\n') {
+            if (!is_empty_line) {
+                line_count++;
+            }
+            is_empty_line = true;
+            continue;
+        }
+
+        // 4. 有効な文字の判定
+        if (!isspace(c) && !is_in_block_comment) {
+            is_empty_line = false;
+        }
+    }
+
+    if (!is_empty_line) {
+        line_count++;
+    }
+    return line_count;
+}
+
+// -------------------------------- Python風 -------------------------------------------
+/**
+ * Pythonファイルの行数をカウントする関数
+ * 行コメント（#）と、Docstring（""" または '''）をブロックコメントとして考慮。
+ */
+int count_python_like_file(const unsigned char *text, size_t text_len) {
+    int line_count = 0;
+    bool is_empty_line = true;
+    bool has_comment_begun = false;
+    bool is_in_double_docstring = false;
+    bool is_in_single_docstring = false;
+
+    for (size_t i = 0; i < text_len; i++) {
+        unsigned char c = text[i];
+
+        // 1. Docstringの終了判定
+        if (is_in_double_docstring) {
+            if (i + 2 < text_len && c == '"' && text[i + 1] == '"' && text[i + 2] == '"') {
+                is_in_double_docstring = false;
+                i += 2;
+                continue;
+            }
+        } else if (is_in_single_docstring) {
+            if (i + 2 < text_len && c == '\'' && text[i + 1] == '\'' && text[i + 2] == '\'') {
+                is_in_single_docstring = false;
+                i += 2;
+                continue;
+            }
+        }
+        // 2. コメント/Docstringの開始判定 (行コメントが始まっていない場合のみ)
+        else if (!has_comment_begun) {
+            if (c == '#') {
+                has_comment_begun = true;
+                continue;// 1文字なので i は増やさず continue
+            } else if (i + 2 < text_len && c == '"' && text[i + 1] == '"' && text[i + 2] == '"') {
+                is_in_double_docstring = true;
+                i += 2;
+                continue;
+            } else if (i + 2 < text_len && c == '\'' && text[i + 1] == '\'' && text[i + 2] == '\'') {
+                is_in_single_docstring = true;
+                i += 2;
+                continue;
+            }
+        }
+
+        // 3. 改行の処理
+        if (c == '\n') {
+            if (!is_empty_line) {
+                line_count++;
+            }
+            has_comment_begun = false;
+            is_empty_line = true;
+            continue;
+        }
+
+        // 4. 有効な文字の判定
+        if (!isspace(c) && !has_comment_begun && !is_in_double_docstring && !is_in_single_docstring) {
+            is_empty_line = false;
+        }
+    }
+
+    if (!is_empty_line) {
+        line_count++;
+    }
+    return line_count;
+}
+
+// -------------------------------- Script風 -------------------------------------------
+/**
+ * Shellスクリプト, YAML, Rubyなどの行数をカウントする関数
+ * 行コメント（#）のみ考慮。
+ */
+int count_script_like_file(const unsigned char *text, size_t text_len) {
+    int line_count = 0;
+    bool is_empty_line = true;
+    bool has_comment_begun = false;
+
+    for (size_t i = 0; i < text_len; i++) {
+        unsigned char c = text[i];
+
+        // 1. コメント開始判定
+        if (!has_comment_begun && c == '#') {
+            has_comment_begun = true;
+            continue;
+        }
+
+        // 2. 改行の処理
+        if (c == '\n') {
+            if (!is_empty_line) {
+                line_count++;
+            }
+            has_comment_begun = false;
+            is_empty_line = true;
+            continue;
+        }
+
+        // 3. 有効な文字の判定
+        if (!isspace(c) && !has_comment_begun) {
+            is_empty_line = false;
+        }
+    }
+
+    if (!is_empty_line) {
+        line_count++;
+    }
+    return line_count;
+}
+
+// ----------------------------- ハンドラ -------------------------------------
+
 static const sloc_handler_t handlers[] = {
+    // C言語スタイル
     {".c", count_c_like_file},
     {".h", count_c_like_file},
     {".cpp", count_c_like_file},
     {".hpp", count_c_like_file},
+    {".go", count_c_like_file},
+    {".rs", count_c_like_file},
     {".java", count_c_like_file},
     {".js", count_c_like_file},
     {".ts", count_c_like_file},
+    // XML/HTMLスタイル
+    {".xml", count_xml_like_file},
+    {".html", count_xml_like_file},
+    {".htm", count_xml_like_file},
+    // Pythonスタイル
+    {".py", count_python_like_file},
+    // Scriptスタイル
+    {".sh", count_script_like_file},
+    {".yaml", count_script_like_file},
+    {".yml", count_script_like_file},
+    {".rb", count_script_like_file},// RubyもScriptスタイルでカウントすることにする
 };
 
 // ---------------------------------------------------------------------------------
