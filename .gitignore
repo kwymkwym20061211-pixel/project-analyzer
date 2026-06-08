@@ -4,10 +4,12 @@ generated/*
 generated/src/*
 generated/configs/*
 compiled/*
-app/*
 bin/*
 # ユーザー設定
 user/*
+
+# 実行ファイル（生成される）
+main
 
 # 除外からの除外
 !*/.gitkeep

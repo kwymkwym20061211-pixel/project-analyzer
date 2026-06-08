@@ -6,7 +6,7 @@ CFLAGS := -std=c17 -Wall -Wextra -Wpedantic
 SRC_DIR := src
 BUILD_DIR := compiled
 # 実行ファイルのパス
-TARGET := $(BUILD_DIR)/main
+TARGET := main
 
 # ソースとオブジェクトの定義
 SRCS := $(shell find $(SRC_DIR) -name "*.c")
