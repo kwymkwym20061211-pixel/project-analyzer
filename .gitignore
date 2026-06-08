@@ -3,12 +3,11 @@
 generated/*
 generated/src/*
 generated/configs/*
+compiled/*
 # ユーザー設定
 user/*
 
 # 除外からの除外
-!generated/.gitkeep
-!generated/src/.gitkeep
-!generated/configs/.gitkeep
+!*/.gitkeep
 !user/run.bat
 !user/README.md
