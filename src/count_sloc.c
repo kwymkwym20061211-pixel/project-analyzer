@@ -166,9 +166,6 @@ int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
         return -1;
     }
 
-    // 結果返し
-    *result_buf = *g_ctx.result;
-
     // バッファ開放
     free(g_ctx.text_buf);
 
