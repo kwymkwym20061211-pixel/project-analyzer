@@ -76,8 +76,10 @@ int main(int argc, char *argv[]) {
         printf("SLOC Count:\n");
         int64_t total_sloc = 0;
         for (size_t i = 0; i < result.sloc_count; i++) {
-            printf("  %s: %lld\n", result.slocs[i].extension, result.slocs[i].count);
-            total_sloc += result.slocs[i].count;
+            int64_t count = result.slocs[i].count;
+            if (count == 0) continue;// 0行の拡張子は表示しない
+            printf("  %s: %lld\n", result.slocs[i].extension, count);
+            total_sloc += count;
         }
         printf("Total SLOC: %lld\n", total_sloc);
     }
