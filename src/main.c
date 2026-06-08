@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
     // 4. 設定に従って処理を実行
     if (args.build_tree) {
         printf("Building tree structure...\n");
-
-        return 0;
     }
+
+    return 0;
+}
