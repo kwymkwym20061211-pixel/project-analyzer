@@ -1,5 +1,9 @@
 #ifndef COUNT_SLOC_H
 #define COUNT_SLOC_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
 /**
  * 拡張子と行数の対応。
  */

@@ -1,5 +1,8 @@
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "./include/count_sloc.h"
@@ -72,7 +75,7 @@ int main(int argc, char *argv[]) {
         }
         printf("SLOC Count:\n");
         for (size_t i = 0; i < result.sloc_count; i++) {
-            printf("  %s: %lld\n", result.slocs[i].extension, result.slocs[i].count);
+            printf("  %s: %d\n", result.slocs[i].extension, result.slocs[i].count);
         }
     }
 

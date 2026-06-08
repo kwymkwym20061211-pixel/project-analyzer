@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "./include/count_sloc.h"
+
 // 拡張子と解析関数のペア
 typedef struct {
     const char *ext;
