@@ -68,15 +68,6 @@ int main(int argc, char *argv[]) {
     if (args.count_sloc) {
         printf("Counting SLOC...\n");
         sloc_count_result_t result = {0};
-        ext_sloc_count_t counts[] = {
-            {".c", 0},
-            {".h", 0},
-            {".cpp", 0},
-            {".hpp", 0},
-            {".java", 0},
-            {".js", 0},
-            {".ts", 0}};
-        result.slocs = counts;
         int sloc_rc = count_sloc(&result, (const char *) args.project_path);
         if (sloc_rc < 0) {
             printf("Failed to count SLOC.\n");
