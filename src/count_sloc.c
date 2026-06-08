@@ -59,7 +59,8 @@ static sloc_counter_t c_like_sloc_counter = {
 /**
   * プロジェクトのソースコード行数をカウントする関数
  */
-int count_sloc(const char *project_path) {
+int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
+    assert(result_buf != NULL);
     assert(project_path != NULL);
     // 1. プロジェクト内の全てのファイルを再帰的に探索する。
     // 2. 各ファイルの内容と拡張子を得る
