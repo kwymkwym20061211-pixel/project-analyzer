@@ -79,16 +79,6 @@ static const sloc_handler_t handlers[] = {
 
 // ---------------------------------------------------------------------------------
 
-// 拡張子から適切なハンドラを探す
-static int (*get_handler(const char *path))(const unsigned char *, size_t) {
-    const char *ext = strrchr(path, '.');
-    if (!ext) return NULL;
-    for (size_t i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
-        if (strcmp(ext, handlers[i].ext) == 0) return handlers[i].file_reader;
-    }
-    return NULL;
-}
-
 // nftwのコールバックで使うための内部コンテキスト
 typedef struct {
     sloc_count_result_t *result;
@@ -96,14 +86,24 @@ typedef struct {
 
 // グローバル（または静的）にコンテキストを保持してコールバックに渡す
 static walk_context_t g_ctx;
+// 拡張子から直接ハンドラを検索する関数に変更
+static int (*get_handler_by_ext(const char *ext))(const unsigned char *, size_t) {
+    for (size_t i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+        if (strcmp(ext, handlers[i].ext) == 0) return handlers[i].file_reader;
+    }
+    return NULL;
+}
 
 static int process_file(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
     if (typeflag != FTW_F) return 0;
 
-    int (*reader)(const unsigned char *, size_t) = get_handler(fpath);
-    if (!reader) {
-        return 0;
-    }
+    // 1. 拡張子を一度だけ取得
+    const char *ext = strrchr(fpath, '.');
+    if (!ext) return 0;
+
+    // 2. 取得した拡張子を使ってハンドラを特定
+    int (*reader)(const unsigned char *, size_t) = get_handler_by_ext(ext);
+    if (!reader) return 0;
 
     // ファイル読み込みと解析
     int fd = open(fpath, O_RDONLY);
@@ -115,8 +115,7 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
         if (read(fd, buf, len) == (ssize_t) len) {
             int lines = reader(buf, len);
 
-            // 結果を result_buf に加算
-            const char *ext = strrchr(fpath, '.');
+            // 3. 同じ ext を使って加算先を特定
             for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
                 if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
                     g_ctx.result->slocs[i].count += lines;
