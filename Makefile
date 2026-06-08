@@ -4,12 +4,14 @@ CFLAGS := -std=c17 -Wall -Wextra -Wpedantic
 
 # ディレクトリ定義
 SRC_DIR := src
-OBJ_DIR := compiled
-TARGET := app # 実行ファイル名
+BUILD_DIR := compiled
+# 実行ファイルのパス
+TARGET := $(BUILD_DIR)/main
 
 # ソースとオブジェクトの定義
 SRCS := $(shell find $(SRC_DIR) -name "*.c")
-OBJS := $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+# オブジェクトファイルは compiled/obj/ に出すと整理しやすいです
+OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/obj/%.o)
 DIRS := $(sort $(dir $(OBJS)))
 
 .PHONY: all clean
@@ -22,7 +24,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET)
 
 # オブジェクトファイルの生成ルール
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(DIRS)
+$(BUILD_DIR)/obj/%.o: $(SRC_DIR)/%.c | $(DIRS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ディレクトリ作成
@@ -31,4 +33,4 @@ $(DIRS):
 
 # クリーンアップ
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR)
