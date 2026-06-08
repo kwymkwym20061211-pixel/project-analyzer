@@ -74,9 +74,12 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         printf("SLOC Count:\n");
+        int total_sloc = 0;
         for (size_t i = 0; i < result.sloc_count; i++) {
             printf("  %s: %d\n", result.slocs[i].extension, result.slocs[i].count);
+            total_sloc += result.slocs[i].count;
         }
+        printf("Total SLOC: %d\n", total_sloc);
     }
 
     return 0;
