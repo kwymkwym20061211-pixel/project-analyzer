@@ -1,9 +1,5 @@
-
-typedef struct {
-    /** ファイルを読んで行数をカウントする関数。エラーなら-1を返す */
-    int (*file_reader)(const unsigned char *text, size_t text_len);
-} sloc_counter_t;
-
+#ifndef COUNT_SLOC_H
+#define COUNT_SLOC_H
 /**
  * 拡張子と行数の対応。
  */
@@ -24,3 +20,5 @@ typedef struct {
   * プロジェクトのソースコード行数をカウントする関数
  */
 int count_sloc(sloc_count_result_t *result_buf, const char *project_path);
+
+#endif// COUNT_SLOC_H

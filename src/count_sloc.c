@@ -1,4 +1,11 @@
 #include <ctype.h>
+
+// 拡張子と解析関数のペア
+typedef struct {
+    const char *ext;
+    int (*file_reader)(const unsigned char *, size_t);
+} sloc_handler_t;
+
 // -------------------------------- C言語風 -------------------------------------------
 
 /**
@@ -51,8 +58,11 @@ int count_c_like_file(const unsigned char *text, size_t text_len) {
     return line_count;
 }
 
-static sloc_counter_t c_like_sloc_counter = {
-    .file_reader = count_c_like_file};
+static const sloc_handler_t handlers[] = {
+    {".c", count_c_like_file},
+    {".h", count_c_like_file},
+    // { ".java", count_java_file }, など後で追加可能
+};
 
 // ---------------------------------------------------------------------------------
 
