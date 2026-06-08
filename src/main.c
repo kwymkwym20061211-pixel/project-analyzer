@@ -2,10 +2,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "./count_sloc.h"
+
 typedef struct {
     unsigned char project_path[4096];
     bool build_tree;
-    bool count_lines;
+    bool count_sloc;
 } main_args_t;
 
 /**
@@ -20,15 +22,15 @@ static inline void reg_arg(main_args_t *args, const char *arg) {
         printf("  --all, -a    Build a tree structure and count lines in the project\n");
         printf("  --help       Show this help message and exit\n");
         printf("  --tree       Build a tree structure of the project\n");
-        printf("  --count      Count the number of lines in the project\n");
+        printf("  --sloc      Count the number of lines in the project\n");
         exit(0);
     } else if (strcmp(arg, "--all") == 0 || strcmp(arg, "-a") == 0) {
         args->build_tree = true;
-        args->count_lines = true;
+        args->count_sloc = true;
     } else if (strcmp(arg, "--tree") == 0) {
         args->build_tree = true;
-    } else if (strcmp(arg, "--count") == 0) {
-        args->count_lines = true;
+    } else if (strcmp(arg, "--sloc") == 0) {
+        args->count_sloc = true;
     } else {
         // それ以外はプロジェクトパスとみなす。
         strncpy((char *) args->project_path, arg, sizeof(args->project_path) - 1);
@@ -59,6 +61,9 @@ int main(int argc, char *argv[]) {
     }
     // 3. プロジェクトパスを表示
     printf("Project Path: %s\n", args.project_path);
+    // 4. 設定に従って処理を実行
+    if (args.build_tree) {
+        printf("Building tree structure...\n");
 
-    return 0;
-}
+        return 0;
+    }
