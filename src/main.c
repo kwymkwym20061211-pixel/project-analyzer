@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "./count_sloc.h"
+#include "./include/count_sloc.h"
 
 typedef struct {
     unsigned char project_path[4096];
@@ -64,10 +64,15 @@ int main(int argc, char *argv[]) {
     // 4. 設定に従って処理を実行
     if (args.count_sloc) {
         printf("Counting SLOC...\n");
-        int sloc_rc = count_sloc((const char *) args.project_path);
+        sloc_count_result_t result = {0};
+        int sloc_rc = count_sloc(&result, (const char *) args.project_path);
         if (sloc_rc < 0) {
             printf("Failed to count SLOC.\n");
             return -1;
+        }
+        printf("SLOC Count:\n");
+        for (size_t i = 0; i < result.sloc_count; i++) {
+            printf("  %s: %lld\n", result.slocs[i].extension, result.slocs[i].count);
         }
     }
 
