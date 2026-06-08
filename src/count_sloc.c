@@ -127,6 +127,9 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
         return 0;
     }
 
+    // バッファをゼロ埋め
+    memset(g_ctx.text_buf, 0, g_ctx.text_buf_size);
+
     // ファイルを読み込んで行数をカウント
     if (read(fd, g_ctx.text_buf, len) == (ssize_t) len) {
         int lines = reader(g_ctx.text_buf, len);
