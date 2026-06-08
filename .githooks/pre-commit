@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# プロジェクトルートにある .clang-format を自動的に読み込んで適用します
+git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h)$' | while read -r file; do
+    clang-format -i "$file"
+    git add "$file"
+done
