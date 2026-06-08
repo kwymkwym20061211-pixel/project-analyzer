@@ -64,6 +64,10 @@ int count_c_like_file(const unsigned char *text, size_t text_len) {
             continue;
         }
     }
+    // ループ終了後に「まだ有効な行がある」場合は加算する
+    if (!is_empty_line) {
+        line_count++;
+    }
     return line_count;
 }
 
