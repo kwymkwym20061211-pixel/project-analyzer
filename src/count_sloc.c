@@ -133,10 +133,13 @@ static int process_file(const char *fpath, const struct stat *sb, int typeflag, 
     // ファイルを読み込んで行数をカウント
     if (read(fd, g_ctx.text_buf, len) == (ssize_t) len) {
         int lines = reader(g_ctx.text_buf, len);
+        printf("DEBUG: File %s has %d lines (ext: %s)\n", fpath, lines, ext);
 
         // 3. 同じ ext を使って加算先を特定
         for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
+            printf("  DEBUG: Comparing '%s' vs '%s'\n", ext, g_ctx.result->slocs[i].extension);
             if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
+                printf("  DEBUG: Matched ext '%s', adding %d lines\n", ext, lines);
                 g_ctx.result->slocs[i].count += lines;
                 break;
             }
@@ -158,6 +161,9 @@ int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
         perror("nftw");
         return -1;
     }
+
+    // 結果返し
+    *result_buf = *g_ctx.result;
 
     // バッファ開放
     free(g_ctx.text_buf);
