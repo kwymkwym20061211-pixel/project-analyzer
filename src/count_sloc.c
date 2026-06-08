@@ -1,4 +1,11 @@
+#define _XOPEN_SOURCE 500
 #include <ctype.h>
+#include <fcntl.h>
+#include <ftw.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // 拡張子と解析関数のペア
 typedef struct {
@@ -70,15 +77,65 @@ static const sloc_handler_t handlers[] = {
 
 // ---------------------------------------------------------------------------------
 
-/**
-  * プロジェクトのソースコード行数をカウントする関数
- */
-int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
-    assert(result_buf != NULL);
-    assert(project_path != NULL);
-    // 1. プロジェクト内の全てのファイルを再帰的に探索する。
-    // 2. 各ファイルの内容と拡張子を得る
-    // 3. 拡張子に応じて適切なfile_readerを選択する。
+// 拡張子から適切なハンドラを探す
+static int (*get_handler(const char *path))(const unsigned char *, size_t) {
+    const char *ext = strrchr(path, '.');
+    if (!ext) return NULL;
+    for (size_t i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+        if (strcmp(ext, handlers[i].ext) == 0) return handlers[i].file_reader;
+    }
+    return NULL;
+}
 
-    return 0;// 仮の戻り値
+// nftwのコールバックで使うための内部コンテキスト
+typedef struct {
+    sloc_count_result_t *result;
+} walk_context_t;
+
+// グローバル（または静的）にコンテキストを保持してコールバックに渡す
+static walk_context_t g_ctx;
+
+static int process_file(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
+    if (typeflag != FTW_F) return 0;
+
+    int (*reader)(const unsigned char *, size_t) = get_handler(fpath);
+    if (!reader) return 0;
+
+    // ファイル読み込みと解析
+    int fd = open(fpath, O_RDONLY);
+    if (fd < 0) return 0;
+
+    size_t len = sb->st_size;
+    unsigned char *buf = malloc(len);
+    if (buf) {
+        if (read(fd, buf, len) == (ssize_t) len) {
+            int lines = reader(buf, len);
+
+            // 結果を result_buf に加算
+            const char *ext = strrchr(fpath, '.');
+            for (size_t i = 0; i < g_ctx.result->sloc_count; i++) {
+                if (strcmp(ext, g_ctx.result->slocs[i].extension) == 0) {
+                    g_ctx.result->slocs[i].count += lines;
+                    break;
+                }
+            }
+        }
+        free(buf);
+    }
+    close(fd);
+    return 0;
+}
+
+int count_sloc(sloc_count_result_t *result_buf, const char *project_path) {
+    if (!result_buf || !project_path) return -1;
+
+    // コンテキストの初期化
+    g_ctx.result = result_buf;
+
+    // nftw で走査開始
+    if (nftw(project_path, process_file, 64, FTW_PHYS) == -1) {
+        perror("nftw");
+        return -1;
+    }
+    return 0;
 }

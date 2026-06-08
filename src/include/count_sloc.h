@@ -13,7 +13,7 @@ typedef struct {
  */
 typedef struct {
     ext_sloc_count_t *slocs;
-    size_t sloc_len;
+    size_t sloc_count;
 } sloc_count_result_t;
 
 /**
